@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RACK // Contrôle des Transmissions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg: #0B1220;
+    --panel: #131B2C;
+    --panel-2: #182238;
+    --line: #253148;
+    --text: #E8ECF2;
+    --muted: #7C8AA0;
+    --ok: #3DDC84;
+    --ok-dim: #17331f;
+    --mission: #4C9AFF;
+    --mission-dim: #142238;
+    --warn: #F5A623;
+    --warn-dim: #2e2510;
+    --danger: #E5484D;
+    --danger-dim: #2e1416;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .disp{font-family:'Space Grotesk',sans-serif;}
+
+  .app{max-width:1180px;margin:0 auto;padding:24px 20px 60px;}
+
+  /* HEADER */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px;flex-wrap:wrap;gap:14px;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-led{width:11px;height:11px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:pulse 2.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .brand h1{font-size:19px;letter-spacing:.06em;margin:0;font-weight:700;}
+  .brand span{color:var(--muted);font-size:11px;letter-spacing:.16em;text-transform:uppercase;display:block;margin-top:2px;}
+
+  .tabs{display:flex;gap:4px;background:var(--panel);padding:4px;border-radius:10px;border:1px solid var(--line);}
+  .tab{padding:9px 16px;font-size:13px;font-weight:600;color:var(--muted);border-radius:7px;cursor:pointer;border:none;background:transparent;font-family:inherit;letter-spacing:.02em;}
+  .tab.active{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line);}
+
+  .view{display:none;}
+  .view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  /* DASHBOARD STAT CARDS */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:26px;}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;position:relative;overflow:hidden;}
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1;}
+  .stat .lbl{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;}
+  .stat.ok .num{color:var(--ok);}
+  .stat.mission .num{color:var(--mission);}
+  .stat.warn .num{color:var(--warn);}
+  .stat.danger .num{color:var(--danger);}
+
+  h2.section-title{font-family:'Space Grotesk',sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:28px 0 12px;display:flex;align-items:center;gap:10px;}
+  h2.section-title::after{content:'';flex:1;height:1px;background:var(--line);}
+
+  /* EQUIPMENT RACK CARDS */
+  .rack-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+  .rack{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:12px;padding:16px;position:relative;}
+  .rack-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .rack-id{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;letter-spacing:.02em;}
+  .rack-type{color:var(--muted);font-size:12px;margin-top:2px;}
+  .led-row{display:flex;align-items:center;gap:6px;}
+  .led{width:9px;height:9px;border-radius:50%;}
+  .led.on-ok{background:var(--ok);box-shadow:0 0 7px var(--ok);}
+  .led.on-mission{background:var(--mission);box-shadow:0 0 7px var(--mission);animation:pulse 1.6s ease-in-out infinite;}
+  .led.on-warn{background:var(--warn);box-shadow:0 0 7px var(--warn);}
+  .led.on-danger{background:var(--danger);box-shadow:0 0 7px var(--danger);}
+
+  .badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;letter-spacing:.02em;}
+  .badge.ok{background:var(--ok-dim);color:var(--ok);}
+  .badge.mission{background:var(--mission-dim);color:var(--mission);}
+  .badge.warn{background:var(--warn-dim);color:var(--warn);}
+  .badge.danger{background:var(--danger-dim);color:var(--danger);}
+
+  .rack-meta{font-size:12.5px;color:var(--muted);margin:10px 0 12px;line-height:1.6;}
+  .rack-meta b{color:var(--text);font-weight:500;}
+  .rack-controls{display:flex;gap:6px;flex-wrap:wrap;}
+  select, input, textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:7px 9px;font-size:12.5px;font-family:inherit;width:100%;}
+  select:focus,input:focus,textarea:focus{outline:2px solid var(--mission);outline-offset:1px;}
+  .rack-controls select{flex:1;min-width:120px;}
+
+  .icon-btn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:6px 9px;cursor:pointer;font-size:12px;font-family:inherit;}
+  .icon-btn:hover{color:var(--danger);border-color:var(--danger);}
+
+  .btn{background:var(--mission);color:#04101f;border:none;border-radius:8px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:.02em;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn.secondary{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .btn.small{padding:6px 11px;font-size:12px;}
+
+  /* RETRANSMISSIONS */
+  .mission-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--mission);border-radius:10px;padding:16px 18px;margin-bottom:12px;}
+  .mission-card.done{border-left-color:var(--muted);opacity:.7;}
+  .mission-card.planned{border-left-color:var(--warn);}
+  .mission-card.cancelled{border-left-color:var(--danger);opacity:.55;}
+  .mission-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;}
+  .mission-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15.5px;}
+  .mission-sub{color:var(--muted);font-size:12.5px;margin-top:3px;}
+  .mission-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--panel-2);border:1px solid var(--line);padding:3px 8px;border-radius:6px;color:var(--text);}
+  .mission-actions{display:flex;gap:8px;margin-top:12px;}
+
+  .empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--line);border-radius:10px;}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(6,10,18,.7);align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal-bg.active{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:480px;width:100%;max-height:88vh;overflow-y:auto;}
+  .modal h3{font-family:'Space Grotesk',sans-serif;margin:0 0 16px;font-size:17px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .checks{display:flex;flex-wrap:wrap;gap:8px;}
+  .chk{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:'JetBrains Mono',monospace;}
+  .chk input{width:auto;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .footer-note{color:var(--muted);font-size:11.5px;margin-top:30px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-led"></div>
+      <div>
+        <h1 class="disp">RACK</h1>
+        <span>Contrôle des transmissions &amp; retransmissions</span>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-view="dashboard">Tableau de bord</button>
+      <button class="tab" data-view="equipements">Équipements</button>
+      <button class="tab" data-view="retrans">Retransmissions</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="stat-grid" id="stat-grid"></div>
+
+    <h2 class="section-title">Retransmissions réalisées</h2>
+    <div id="dash-ongoing"></div>
+
+    <h2 class="section-title">À venir</h2>
+    <div id="dash-upcoming"></div>
+
+    <h2 class="section-title">Équipements à surveiller</h2>
+    <div id="dash-alerts"></div>
+  </div>
+
+  <!-- EQUIPEMENTS -->
+  <div class="view" id="view-equipements">
+    <div class="toolbar">
+      <div style="color:var(--muted);font-size:12.5px;">Fly-away, FKU, DSNG, SRT et Live — statut en temps réel</div>
+      <button class="btn" id="btn-add-equip">+ Ajouter un équipement</button>
+    </div>
+    <div class="rack-grid" id="rack-grid"></div>
+  </div>
+
+  <!-- RETRANSMISSIONS -->
+  <div class="view" id="view-retrans">
+    <div class="toolbar">
+      <div style="color:var(--muted);font-size:12.5px;">Planification et suivi des retransmissions</div>
+      <button class="btn" id="btn-add-mission">+ Nouvelle retransmission</button>
+    </div>
+    <div id="mission-list"></div>
+  </div>
+
+  <div class="footer-note">Données partagées entre les utilisateurs de cet outil — stockage persistant.</div>
+</div>
+
+<!-- MODAL EQUIPEMENT -->
+<div class="modal-bg" id="modal-equip">
+  <div class="modal">
+    <h3 id="equip-modal-title">Ajouter un équipement</h3>
+    <input type="hidden" id="equip-edit-id">
+    <div class="field-row">
+      <div class="field"><label>Identifiant</label><input id="equip-id" placeholder="Ex: FC#004"></div>
+      <div class="field"><label>Type</label>
+        <select id="equip-type">
+          <option>Fly-Away</option>
+          <option>FKU</option>
+          <option>DSNG</option>
+          <option>SRT</option>
+          <option>Live</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Statut</label>
+      <select id="equip-status">
+        <option value="disponible">Disponible</option>
+        <option value="mission">En mission</option>
+        <option value="maintenance">En maintenance</option>
+        <option value="panne">Hors service</option>
+      </select>
+    </div>
+    <div class="field"><label>Localisation</label><input id="equip-location" placeholder="Ex: Base Abidjan"></div>
+    <div class="field"><label>Dernière maintenance</label><input type="date" id="equip-maint"></div>
+    <div class="field"><label>Notes</label><textarea id="equip-notes" rows="2" placeholder="Observations techniques..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modal-equip')">Annuler</button>
+      <button class="btn" id="equip-save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RETRANSMISSION -->
+<div class="modal-bg" id="modal-mission">
+  <div class="modal">
+    <h3 id="mission-modal-title">Nouvelle retransmission</h3>
+    <input type="hidden" id="mission-edit-id">
+    <div class="field"><label>Intitulé de l'événement</label><input id="mission-title" placeholder="Ex: Match CAN - Stade Ebimpé"></div>
+    <div class="field"><label>Client</label><input id="mission-client" placeholder="Ex: RTI"></div>
+    <div class="field"><label>Lieu</label><input id="mission-location" placeholder="Ex: Stade Félix Houphouët-Boigny"></div>
+    <div class="field-row">
+      <div class="field"><label>Début</label><input type="datetime-local" id="mission-start"></div>
+      <div class="field"><label>Fin</label><input type="datetime-local" id="mission-end"></div>
+    </div>
+    <div class="field"><label>Technicien(s)</label><input id="mission-tech" placeholder="Ex: K. Yao, S. Diarra"></div>
+    <div class="field"><label>Équipements assignés</label>
+      <div class="checks" id="mission-equip-checks"></div>
+    </div>
+    <div class="field"><label>Statut</label>
+      <select id="mission-status">
+        <option value="planifiee">Planifiée</option>
+        <option value="encours">En cours</option>
+        <option value="terminee">Terminée</option>
+        <option value="annulee">Annulée</option>
+      </select>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="mission-notes" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modal-mission')">Annuler</button>
+      <button class="btn" id="mission-save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATUS_LABELS = {disponible:'Disponible', mission:'En mission', maintenance:'Maintenance', panne:'Hors service'};
+const STATUS_LED = {disponible:'on-ok', mission:'on-mission', maintenance:'on-warn', panne:'on-danger'};
+const STATUS_BADGE = {disponible:'ok', mission:'mission', maintenance:'warn', panne:'danger'};
+
+const MISSION_STATUS_LABELS = {planifiee:'Planifiée', encours:'En cours', terminee:'Terminée', annulee:'Annulée'};
+const MISSION_CLASS = {planifiee:'planned', encours:'', terminee:'done', annulee:'cancelled'};
+
+let equipements = [];
+let missions = [];
+
+const defaultEquip = () => ([
+  {id:'FC#001', type:'Fly-Away', status:'disponible', location:'Base Abidjan', lastMaintenance:'', notes:''},
+  {id:'FC#002', type:'Fly-Away', status:'disponible', location:'Base Abidjan', lastMaintenance:'', notes:''},
+  {id:'FC#003', type:'Fly-Away', status:'disponible', location:'Base Abidjan', lastMaintenance:'', notes:''},
+  {id:'FKU#001', type:'FKU', status:'disponible', location:'Base Abidjan', lastMaintenance:'', notes:''},
+  {id:'DSNG#001', type:'DSNG', status:'disponible', location:'Base Abidjan', lastMaintenance:'', notes:''},
+  {id:'DSNG#002', type:'DSNG', status:'disponible', location:'Base Abidjan', lastMaintenance:'', notes:''},
+]);
+
+// Stockage : utilise window.storage si disponible (artifact Claude.ai),
+// sinon bascule automatiquement sur localStorage (fichier ouvert dans un navigateur).
+const hasCloudStorage = () => (typeof window !== 'undefined') && !!window.storage;
+
+const AppStorage = {
+  async get(key){
+    if(hasCloudStorage()){
+      try{ return await window.storage.get(key, true); }
+      catch(err){ /* clé absente ou erreur -> tente le repli local */ }
+    }
+    const raw = localStorage.getItem('RACK_'+key);
+    return raw ? { value: raw } : null;
+  },
+  async set(key, value){
+    if(hasCloudStorage()){
+      try{ await window.storage.set(key, value, true); return; }
+      catch(err){ console.error('Erreur stockage cloud, repli local', err); }
+    }
+    localStorage.setItem('RACK_'+key, value);
+  }
+};
+
+async function loadData(){
+  try{
+    const e = await AppStorage.get('equipements');
+    equipements = e ? JSON.parse(e.value) : defaultEquip();
+  }catch(err){ equipements = defaultEquip(); }
+  try{
+    const m = await AppStorage.get('retransmissions');
+    missions = m ? JSON.parse(m.value) : [];
+  }catch(err){ missions = []; }
+  render();
+}
+
+async function saveEquip(){
+  try{ await AppStorage.set('equipements', JSON.stringify(equipements)); }catch(e){ console.error('Erreur sauvegarde équipements', e); }
+}
+async function saveMissions(){
+  try{ await AppStorage.set('retransmissions', JSON.stringify(missions)); }catch(e){ console.error('Erreur sauvegarde retransmissions', e); }
+}
+
+// TABS
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-'+t.dataset.view).classList.add('active');
+  });
+});
+
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+
+// EQUIPEMENT MODAL
+document.getElementById('btn-add-equip').addEventListener('click', ()=>{
+  document.getElementById('equip-modal-title').textContent = 'Ajouter un équipement';
+  document.getElementById('equip-edit-id').value = '';
+  document.getElementById('equip-id').value = '';
+  document.getElementById('equip-type').value = 'Fly-Away';
+  document.getElementById('equip-status').value = 'disponible';
+  document.getElementById('equip-location').value = '';
+  document.getElementById('equip-maint').value = '';
+  document.getElementById('equip-notes').value = '';
+  openModal('modal-equip');
+});
+
+function editEquip(id){
+  const eq = equipements.find(x=>x.id===id);
+  if(!eq) return;
+  document.getElementById('equip-modal-title').textContent = 'Modifier ' + eq.id;
+  document.getElementById('equip-edit-id').value = eq.id;
+  document.getElementById('equip-id').value = eq.id;
+  document.getElementById('equip-type').value = eq.type;
+  document.getElementById('equip-status').value = eq.status;
+  document.getElementById('equip-location').value = eq.location||'';
+  document.getElementById('equip-maint').value = eq.lastMaintenance||'';
+  document.getElementById('equip-notes').value = eq.notes||'';
+  openModal('modal-equip');
+}
+
+document.getElementById('equip-save').addEventListener('click', async ()=>{
+  const editId = document.getElementById('equip-edit-id').value;
+  const idVal = document.getElementById('equip-id').value.trim();
+  if(!idVal){ alert('Merci de renseigner un identifiant.'); return; }
+  const data = {
+    id: idVal,
+    type: document.getElementById('equip-type').value,
+    status: document.getElementById('equip-status').value,
+    location: document.getElementById('equip-location').value,
+    lastMaintenance: document.getElementById('equip-maint').value,
+    notes: document.getElementById('equip-notes').value
+  };
+  if(editId){
+    const idx = equipements.findIndex(x=>x.id===editId);
+    if(idx>-1) equipements[idx] = data;
+  } else {
+    if(equipements.find(x=>x.id===idVal)){ alert('Cet identifiant existe déjà.'); return; }
+    equipements.push(data);
+  }
+  await saveEquip();
+  closeModal('modal-equip');
+  render();
+});
+
+async function deleteEquip(id){
+  if(!confirm('Supprimer '+id+' ?')) return;
+  equipements = equipements.filter(x=>x.id!==id);
+  await saveEquip();
+  render();
+}
+
+async function quickStatus(id, status){
+  const eq = equipements.find(x=>x.id===id);
+  if(eq){ eq.status = status; await saveEquip(); render(); }
+}
+
+// MISSION MODAL
+document.getElementById('btn-add-mission').addEventListener('click', ()=>{
+  document.getElementById('mission-modal-title').textContent = 'Nouvelle retransmission';
+  document.getElementById('mission-edit-id').value = '';
+  document.getElementById('mission-title').value = '';
+  document.getElementById('mission-client').value = '';
+  document.getElementById('mission-location').value = '';
+  document.getElementById('mission-start').value = '';
+  document.getElementById('mission-end').value = '';
+  document.getElementById('mission-tech').value = '';
+  document.getElementById('mission-status').value = 'planifiee';
+  document.getElementById('mission-notes').value = '';
+  renderEquipChecks([]);
+  openModal('modal-mission');
+});
+
+function renderEquipChecks(selected){
+  const box = document.getElementById('mission-equip-checks');
+  box.innerHTML = equipements.map(eq=>`
+    <label class="chk"><input type="checkbox" value="${eq.id}" ${selected.includes(eq.id)?'checked':''}> ${eq.id}</label>
+  `).join('');
+}
+
+function editMission(id){
+  const m = missions.find(x=>x.id===id);
+  if(!m) return;
+  document.getElementById('mission-modal-title').textContent = 'Modifier la retransmission';
+  document.getElementById('mission-edit-id').value = m.id;
+  document.getElementById('mission-title').value = m.title;
+  document.getElementById('mission-client').value = m.client||'';
+  document.getElementById('mission-location').value = m.location||'';
+  document.getElementById('mission-start').value = m.start||'';
+  document.getElementById('mission-end').value = m.end||'';
+  document.getElementById('mission-tech').value = m.tech||'';
+  document.getElementById('mission-status').value = m.status;
+  document.getElementById('mission-notes').value = m.notes||'';
+  renderEquipChecks(m.equipIds||[]);
+  openModal('modal-mission');
+}
+
+document.getElementById('mission-save').addEventListener('click', async ()=>{
+  const editId = document.getElementById('mission-edit-id').value;
+  const title = document.getElementById('mission-title').value.trim();
+  if(!title){ alert('Merci de renseigner un intitulé.'); return; }
+  const checked = Array.from(document.querySelectorAll('#mission-equip-checks input:checked')).map(c=>c.value);
+  const data = {
+    id: editId || ('M-'+Date.now()),
+    title,
+    client: document.getElementById('mission-client').value,
+    location: document.getElementById('mission-location').value,
+    start: document.getElementById('mission-start').value,
+    end: document.getElementById('mission-end').value,
+    tech: document.getElementById('mission-tech').value,
+    status: document.getElementById('mission-status').value,
+    notes: document.getElementById('mission-notes').value,
+    equipIds: checked
+  };
+  if(editId){
+    const idx = missions.findIndex(x=>x.id===editId);
+    if(idx>-1) missions[idx] = data;
+  } else {
+    missions.push(data);
+  }
+  // Sync equipment status with mission status
+  checked.forEach(eqId=>{
+    const eq = equipements.find(x=>x.id===eqId);
+    if(!eq) return;
+    if(data.status==='encours') eq.status = 'mission';
+    if((data.status==='terminee' || data.status==='annulee') && eq.status==='mission') eq.status = 'disponible';
+  });
+  await saveEquip();
+  await saveMissions();
+  closeModal('modal-mission');
+  render();
+});
+
+async function deleteMission(id){
+  if(!confirm('Supprimer cette retransmission ?')) return;
+  missions = missions.filter(x=>x.id!==id);
+  await saveMissions();
+  render();
+}
+
+async function setMissionStatus(id, status){
+  const m = missions.find(x=>x.id===id);
+  if(!m) return;
+  m.status = status;
+  (m.equipIds||[]).forEach(eqId=>{
+    const eq = equipements.find(x=>x.id===eqId);
+    if(!eq) return;
+    if(status==='encours') eq.status='mission';
+    if((status==='terminee'||status==='annulee') && eq.status==='mission') eq.status='disponible';
+  });
+  await saveEquip();
+  await saveMissions();
+  render();
+}
+
+function fmtDate(s){
+  if(!s) return '—';
+  const d = new Date(s);
+  if(isNaN(d)) return s;
+  return d.toLocaleString('fr-FR', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+
+function render(){
+  renderStats();
+  renderRack();
+  renderMissions();
+  renderDashboardLists();
+}
+
+function renderStats(){
+  const total = equipements.length;
+  const dispo = equipements.filter(e=>e.status==='disponible').length;
+  const mission = equipements.filter(e=>e.status==='mission').length;
+  const maint = equipements.filter(e=>e.status==='maintenance').length;
+  const panne = equipements.filter(e=>e.status==='panne').length;
+  const realisees = missions.filter(m=>m.status==='terminee').length;
+  const aVenir = missions.filter(m=>m.status==='planifiee').length;
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="lbl">Équipements</div></div>
+    <div class="stat ok"><div class="num">${dispo}</div><div class="lbl">Disponibles</div></div>
+    <div class="stat mission"><div class="num">${mission}</div><div class="lbl">En mission</div></div>
+    <div class="stat warn"><div class="num">${maint}</div><div class="lbl">Maintenance</div></div>
+    <div class="stat danger"><div class="num">${panne}</div><div class="lbl">Hors service</div></div>
+    <div class="stat ok"><div class="num">${realisees}</div><div class="lbl">Retrans. réalisées</div></div>
+    <div class="stat warn"><div class="num">${aVenir}</div><div class="lbl">Retrans. à venir</div></div>
+  `;
+}
+
+function equipTagsHtml(ids){
+  return (ids||[]).map(id=>`<span class="tag">${id}</span>`).join('') || '<span class="tag">Aucun équipement</span>';
+}
+
+function renderRack(){
+  const grid = document.getElementById('rack-grid');
+  if(equipements.length===0){
+    grid.innerHTML = '<div class="empty">Aucun équipement enregistré. Ajoutez votre premier fly-away ou DSNG.</div>';
+    return;
+  }
+  grid.innerHTML = equipements.map(eq=>`
+    <div class="rack">
+      <div class="rack-head">
+        <div>
+          <div class="rack-id mono">${eq.id}</div>
+          <div class="rack-type">${eq.type}</div>
+        </div>
+        <div class="led-row">
+          <span class="led ${STATUS_LED[eq.status]}"></span>
+          <span class="badge ${STATUS_BADGE[eq.status]}">${STATUS_LABELS[eq.status]}</span>
+        </div>
+      </div>
+      <div class="rack-meta">
+        <div>📍 <b>${eq.location||'—'}</b></div>
+        <div>🔧 Dernière maintenance : <b>${eq.lastMaintenance || '—'}</b></div>
+        ${eq.notes ? `<div>📝 ${eq.notes}</div>` : ''}
+      </div>
+      <div class="rack-controls">
+        <select onchange="quickStatus('${eq.id}', this.value)">
+          <option value="disponible" ${eq.status==='disponible'?'selected':''}>Disponible</option>
+          <option value="mission" ${eq.status==='mission'?'selected':''}>En mission</option>
+          <option value="maintenance" ${eq.status==='maintenance'?'selected':''}>Maintenance</option>
+          <option value="panne" ${eq.status==='panne'?'selected':''}>Hors service</option>
+        </select>
+        <button class="icon-btn" onclick="editEquip('${eq.id}')">✎</button>
+        <button class="icon-btn" onclick="deleteEquip('${eq.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function missionCardHtml(m){
+  return `
+    <div class="mission-card ${MISSION_CLASS[m.status]}">
+      <div class="mission-top">
+        <div>
+          <div class="mission-title">${m.title}</div>
+          <div class="mission-sub">${m.client || 'Client non renseigné'} · ${m.location || 'Lieu non précisé'}</div>
+          <div class="mission-sub mono">${fmtDate(m.start)} → ${fmtDate(m.end)}</div>
+        </div>
+        <span class="badge ${m.status==='encours'?'mission':m.status==='terminee'?'ok':m.status==='annulee'?'danger':'warn'}">${MISSION_STATUS_LABELS[m.status]}</span>
+      </div>
+      <div class="mission-tags">${equipTagsHtml(m.equipIds)}</div>
+      ${m.tech ? `<div class="mission-sub" style="margin-top:8px;">👤 ${m.tech}</div>` : ''}
+      ${m.notes ? `<div class="mission-sub" style="margin-top:4px;">📝 ${m.notes}</div>` : ''}
+      <div class="mission-actions">
+        ${m.status==='planifiee' ? `<button class="btn small" onclick="setMissionStatus('${m.id}','encours')">Démarrer</button>` : ''}
+        ${m.status==='encours' ? `<button class="btn small" onclick="setMissionStatus('${m.id}','terminee')">Terminer</button>` : ''}
+        <button class="btn small secondary" onclick="editMission('${m.id}')">Modifier</button>
+        <button class="icon-btn" onclick="deleteMission('${m.id}')">🗑</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMissions(){
+  const list = document.getElementById('mission-list');
+  if(missions.length===0){
+    list.innerHTML = '<div class="empty">Aucune retransmission planifiée pour le moment.</div>';
+    return;
+  }
+  const sorted = [...missions].sort((a,b)=> new Date(b.start||0) - new Date(a.start||0));
+  list.innerHTML = sorted.map(missionCardHtml).join('');
+}
+
+function renderDashboardLists(){
+  const realisees = missions.filter(m=>m.status==='terminee').sort((a,b)=> new Date(b.end||b.start||0) - new Date(a.end||a.start||0));
+  const upcoming = missions.filter(m=>m.status==='planifiee').sort((a,b)=> new Date(a.start||0) - new Date(b.start||0)).slice(0,5);
+
+  document.getElementById('dash-ongoing').innerHTML = realisees.length
+    ? realisees.map(missionCardHtml).join('')
+    : '<div class="empty">Aucune retransmission réalisée pour le moment.</div>';
+
+  document.getElementById('dash-upcoming').innerHTML = upcoming.length
+    ? upcoming.map(missionCardHtml).join('')
+    : '<div class="empty">Aucune retransmission planifiée à venir.</div>';
+
+  const alerts = equipements.filter(e=>e.status==='maintenance' || e.status==='panne');
+  document.getElementById('dash-alerts').innerHTML = alerts.length
+    ? `<div class="rack-grid">${alerts.map(eq=>`
+        <div class="rack">
+          <div class="rack-head">
+            <div><div class="rack-id mono">${eq.id}</div><div class="rack-type">${eq.type}</div></div>
+            <span class="badge ${STATUS_BADGE[eq.status]}">${STATUS_LABELS[eq.status]}</span>
+          </div>
+          <div class="rack-meta">${eq.notes || 'Aucune note.'}</div>
+        </div>`).join('')}</div>`
+    : '<div class="empty">Tous les équipements sont opérationnels.</div>';
+}
+
+loadData();
+</script>
+</body>
+</html>
